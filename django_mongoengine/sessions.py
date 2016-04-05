@@ -86,7 +86,9 @@ class SessionStore(SessionBase):
 
     def save(self, must_create=False):
         if self.session_key is None:
-            self.create()
+            # self.create()
+            # self.create fails with python-social-auth because in line 85: self._session_cache = {}
+            self._session_key = self._get_new_session_key()
         s = MongoSession(session_key=self.session_key)
         if MONGOENGINE_SESSION_DATA_ENCODE:
             s.session_data = self.encode(self._get_session(no_load=must_create))
