@@ -15,12 +15,13 @@ from setuptools import setup, find_packages
 import sys, os
 
 
-__version__ = '0.2.1'
+__version__ = '0.2.1.ua.1'
 __description__ = 'Django support for MongoDB via MongoEngine',
 __license__ = 'BSD'
 __author__ = 'Ross Lawley',
 __email__ = 'ross.lawley@gmail.com',
-
+__maintainer__ = 'Sergiu Zaharie',
+__maintainer_email__ = 'zahariesergiu@gmail.com'
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -31,11 +32,13 @@ REQUIRES = [i.strip() for i in open("requirements.txt").readlines()]
 setup(
     name='django-mongoengine',
     version=__version__,
-    url='https://github.com/mongoengine/django-mongoengine',
-    download_url='https://github.com/mongoengine/django-mongoengine/tarball/master',
+    url='https://github.com/united-academics/django-mongoengine',
+    download_url='https://github.com/united-academics/django-mongoengine/tarball/master',
     license=__license__,
     author=__author__,
     author_email=__email__,
+    maintainer = __maintainer__,
+    maintainer_email = __maintainer_email__,
     description=__description__,
     long_description=__doc__,
     test_suite='nose.collector',
