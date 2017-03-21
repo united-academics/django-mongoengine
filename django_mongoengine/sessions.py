@@ -1,7 +1,9 @@
-from bson import json_util
+import logging
 from django.conf import settings
 from django.contrib.sessions.backends.base import SessionBase, CreateError
 from django.core.exceptions import SuspiciousOperation
+
+from bson import json_util
 
 from mongoengine.document import Document
 from mongoengine import fields
@@ -52,12 +54,6 @@ class SessionStore(SessionBase):
     """A MongoEngine-based session store for Django.
     """
 
-    def _get_session(self, *args, **kwargs):
-        sess = super(SessionStore, self)._get_session(*args, **kwargs)
-        if sess.get('_auth_user_id', None):
-            sess['_auth_user_id'] = str(sess.get('_auth_user_id'))
-        return sess
-
     def load(self):
         try:
             s = MongoSession.objects(session_key=self.session_key,
@@ -66,7 +62,11 @@ class SessionStore(SessionBase):
                 return self.decode(force_text(s.session_data))
             else:
                 return s.session_data
-        except (IndexError, SuspiciousOperation):
+        except (IndexError, SuspiciousOperation) as e:
+            if isinstance(e, SuspiciousOperation):
+                logger = logging.getLogger('django.security.%s' %
+                        e.__class__.__name__)
+                logger.warning(force_text(e))
             self._session_key = None
             return {}
 
@@ -81,7 +81,6 @@ class SessionStore(SessionBase):
             except CreateError:
                 continue
             self.modified = True
-            self._session_cache = {}
             return
 
     def save(self, must_create=False):
@@ -89,11 +88,12 @@ class SessionStore(SessionBase):
             # self.create()
             # self.create fails with python-social-auth because in line 85: self._session_cache = {}
             self._session_key = self._get_new_session_key()
+        data = self._get_session(no_load=must_create)
         s = MongoSession(session_key=self.session_key)
         if MONGOENGINE_SESSION_DATA_ENCODE:
-            s.session_data = self.encode(self._get_session(no_load=must_create))
+            s.session_data = self.encode(data)
         else:
-            s.session_data = self._get_session(no_load=must_create)
+            s.session_data = data
         s.expire_date = self.get_expiry_date()
         try:
             s.save(force_insert=must_create)
