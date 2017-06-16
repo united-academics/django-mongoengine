@@ -15,7 +15,7 @@ from setuptools import setup, find_packages
 import sys, os
 
 
-__version__ = '0.2.1.ua.3'
+__version__ = '0.2.1.ua.4'
 __description__ = 'Django support for MongoDB via MongoEngine',
 __license__ = 'BSD'
 __author__ = 'Ross Lawley',
