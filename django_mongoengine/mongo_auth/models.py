@@ -1,11 +1,8 @@
 from bson.objectid import ObjectId
 from .managers import MongoUserManager
 from django.db import models
-from .auth import make_password
 
-
-class User(AbstractUser):
-    meta = {'allow_inheritance': True}
+from .auth import make_password, BaseUser
 
 
 class MongoUser(BaseUser, models.Model):

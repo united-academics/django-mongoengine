@@ -1,11 +1,17 @@
 from django.utils.encoding import smart_str
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
-from django.contrib.auth.models import _user_has_perm, _user_get_all_permissions, _user_has_module_perms
+from django.conf import settings
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    _user_has_perm, _user_get_all_permissions, _user_has_module_perms,
+)
 from django.db import models
 from django.contrib.contenttypes.models import ContentTypeManager
 from django.contrib import auth
+
 from mongoengine import ImproperlyConfigured
+
 from django_mongoengine import document
 from django_mongoengine import fields
 
@@ -34,6 +40,12 @@ except ImportError:
         salt = get_hexdigest(algo, str(random()), str(random()))[:5]
         hash = get_hexdigest(algo, salt, raw_password)
         return '%s$%s$%s' % (algo, salt, hash)
+
+
+class BaseUser(object):
+
+    is_anonymous = AbstractBaseUser.__dict__['is_anonymous']
+    is_authenticated = AbstractBaseUser.__dict__['is_authenticated']
 
 
 class ContentType(document.Document):
@@ -157,13 +169,13 @@ class Group(document.Document):
         return self.name
 
 
-class User(document.Document):
+class AbstractUser(BaseUser, document.Document):
     """A User document that aims to mirror most of the API specified by Django
     at http://docs.djangoproject.com/en/dev/topics/auth/#users
     """
     username = fields.StringField(
-        max_length=30, verbose_name=_('username'),
-        help_text=_("Required. 30 characters or fewer. Letters, numbers and @/./+/-/_ characters"),
+        max_length=150, verbose_name=_('username'),
+        help_text=_("Required. 150 characters or fewer. Letters, numbers and @/./+/-/_ characters"),
     )
 
     first_name = fields.StringField(
@@ -200,11 +212,11 @@ class User(document.Document):
         fields.ReferenceField(Permission), verbose_name=_('user permissions'),
         blank=True, help_text=_('Permissions for the user.'))
 
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email']
+    USERNAME_FIELD = getattr(settings, 'MONGOENGINE_USERNAME_FIELDS', 'username')
+    REQUIRED_FIELDS = getattr(settings, 'MONGOENGINE_USER_REQUIRED_FIELDS', ['email'])
 
     meta = {
-        'allow_inheritance': True,
+        'abstract': True,
         'indexes': [
             {'fields': ['username'], 'unique': True, 'sparse': True}
         ]
@@ -218,12 +230,6 @@ class User(document.Document):
         """
         full_name = u'%s %s' % (self.first_name or '', self.last_name or '')
         return full_name.strip()
-
-    def is_anonymous(self):
-        return False
-
-    def is_authenticated(self):
-        return True
 
     def set_password(self, raw_password):
         """Sets the user's password - always use this rather than directly
@@ -243,10 +249,10 @@ class User(document.Document):
         return check_password(raw_password, self.password)
 
     @classmethod
-    def create_user(cls, username, password, email=None):
+    def _create_user(cls, username, password, email=None, create_superuser=False):
         """Create (and save) a new user with the given username, password and
-        email address.
-        """
+                email address.
+                """
         now = timezone.now()
 
         # Normalize the address by lowercasing the domain part of the email
@@ -261,8 +267,19 @@ class User(document.Document):
 
         user = cls(username=username, email=email, date_joined=now)
         user.set_password(password)
+        if create_superuser:
+            user.is_staff = True
+            user.is_superuser = True
         user.save()
         return user
+
+    @classmethod
+    def create_user(cls, username, password, email=None):
+        return cls._create_user(username, password, email)
+
+    @classmethod
+    def create_superuser(cls, username, password, email=None):
+        return cls._create_user(username, password, email, create_superuser=True)
 
     def get_group_permissions(self, obj=None):
         """
@@ -295,6 +312,17 @@ class User(document.Document):
         # Otherwise we need to check the backends.
         return _user_has_perm(self, perm, obj)
 
+    def has_perms(self, perm_list, obj=None):
+        """
+        Returns True if the user has each of the specified permissions. If
+        object is passed, it checks if the user has all required perms for this
+        object.
+        """
+        for perm in perm_list:
+            if not self.has_perm(perm, obj):
+                return False
+        return True
+
     def has_module_perms(self, app_label):
         """
         Returns True if the user has any permissions in the given app label.
@@ -317,7 +345,6 @@ class User(document.Document):
         SiteProfileNotAvailable if this site does not allow profiles.
         """
         if not hasattr(self, '_profile_cache'):
-            from django.conf import settings
             if not getattr(settings, 'AUTH_PROFILE_MODULE', False):
                 raise SiteProfileNotAvailable('You need to set AUTH_PROFILE_MO'
                                               'DULE in your project settings')
@@ -339,3 +366,7 @@ class User(document.Document):
             except (ImportError, ImproperlyConfigured):
                 raise SiteProfileNotAvailable
         return self._profile_cache
+
+
+class User(AbstractUser):
+    meta = {'allow_inheritance': True}
