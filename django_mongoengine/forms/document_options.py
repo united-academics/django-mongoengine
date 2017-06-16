@@ -63,6 +63,9 @@ class DocumentMetaWrapper(object):
     _field_cache = None
     document = None
     _meta = None
+    # Required by Django 1.9.4:
+    private_fields = []
+    related_fkey_lookups = []
 
     def __init__(self, document):
         if isinstance(document._meta, DocumentMetaWrapper):
