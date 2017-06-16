@@ -1,5 +1,6 @@
 from . import djangoflavor
 
+
 def init_module():
     """
     Create classes with Django-flavor mixins,
@@ -19,6 +20,7 @@ def init_module():
         )
 init_module()
 
+
 def patch_mongoengine_field(field_name):
     """
     patch mongoengine.[field_name] for comparison support
@@ -28,8 +30,21 @@ def patch_mongoengine_field(field_name):
     from mongoengine import common
     field = common._import_class(field_name)
     for k in ["__eq__", "__lt__", "__hash__", "attname"]:
-        if not k in field.__dict__:
+        if k not in field.__dict__:
             setattr(field, k, djangoflavor.DjangoField.__dict__[k])
 
 for f in ["StringField", "ObjectIdField"]:
     patch_mongoengine_field(f)
+
+
+def patch_mongoengine_field_relation(field_name):
+    from mongoengine import common
+    field = common._import_class(field_name)
+    is_relation = isinstance(field, ReferenceField)
+    setattr(field, 'is_relation', is_relation)
+    if not is_relation:
+        setattr(field, 'remote_field', None)
+
+
+for f in __all__:
+    patch_mongoengine_field_relation(f)
