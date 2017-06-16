@@ -6,6 +6,7 @@ from django.db.models.query import QuerySet as DjangoQuerySet
 from mongoengine.errors import NotUniqueError
 from mongoengine import queryset as qs
 
+
 class QueryWrapper(object):
     # XXX: copy funcs from django; now it's just wrapper
     select_related = False
@@ -15,7 +16,8 @@ class QueryWrapper(object):
         self.q = q
         self.order_by = ordering or []
 
-class QuerySet(qs.QuerySet):
+
+class BaseQuerySet(object):
     """
     A base queryset with django-required attributes
     """
@@ -28,6 +30,16 @@ class QuerySet(qs.QuerySet):
     def query(self):
         return QueryWrapper(self._query, self._ordering)
 
+    @property
+    def _prefetch_related_lookups(self):
+        # Originally used in django for prefetch_related(),
+        # see https://docs.djangoproject.com/en/1.9/ref/models/querysets/#prefetch-related
+        # returning empty list to presume that no query prefetch is required
+        return []
+
+    def iterator(self):
+        return self
+
     def get_queryset(self):
         return self
 
@@ -39,7 +51,6 @@ class QuerySet(qs.QuerySet):
 
     def exists(self):
         return bool(self)
-
 
     def _clone(self):
         return self.clone()
@@ -78,6 +89,12 @@ class QuerySet(qs.QuerySet):
             six.reraise(*exc_info)
 
 
+class QuerySet(BaseQuerySet, qs.QuerySet):
+    pass
+
+
+class QuerySetNoCache(BaseQuerySet, qs.QuerySetNoCache):
+    pass
 
 
 class QuerySetManager(qs.QuerySetManager):

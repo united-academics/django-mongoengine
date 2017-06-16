@@ -4,8 +4,13 @@ from django.db import models
 from .auth import make_password
 
 
-class MongoUser(models.Model):
-    """"Dummy user model for Django.
+class User(AbstractUser):
+    meta = {'allow_inheritance': True}
+
+
+class MongoUser(BaseUser, models.Model):
+    """"
+    Dummy user model for Django.
 
     MongoUser is used to replace Django's UserManager with MongoUserManager.
     The actual user document class is django_mongoengine.auth.models.User or any
