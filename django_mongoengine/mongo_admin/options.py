@@ -81,7 +81,7 @@ class BaseDocumentAdmin(djmod.BaseModelAdmin):
                 can_add_related = bool(related_modeladmin and
                             related_modeladmin.has_add_permission(request))
                 form_field.widget = widgets.RelatedFieldWidgetWrapper(
-                            form_field.widget, RelationWrapper(db_field.document_type), self.admin_site,
+                            form_field.widget, RelationWrapper(db_field.document_type, db_field.name), self.admin_site,
                             can_add_related=can_add_related)
                 return form_field
 
